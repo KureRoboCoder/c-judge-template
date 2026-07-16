@@ -1,29 +1,29 @@
 - name: 提出ファイルを検出してテスト
-        run: |
-          for f in answers/Q*.cpp; do
-            [ -e "$f" ] || continue
-            filename=$(basename "$f" .cpp)
-            qnum=$(echo "$filename" | grep -oP '(?<=Q)[0-9]+')
-            letter=$(echo "$filename" | grep -oP '[A-Z]$')
-            testdir="_testdata/Q${qnum}/${letter}"
+  run: |
+    for f in answers/Q*.cpp; do
+      [ -e "$f" ] || continue
+      filename=$(basename "$f" .cpp)
+      qnum=$(echo "$filename" | grep -oP '(?<=Q)[0-9]+')
+      letter=$(echo "$filename" | grep -oP '[A-Z]$')
+      testdir="_testdata/Q${qnum}/${letter}"
 
-            if [ ! -d "$testdir" ]; then
-              echo "⚠️ $filename: テストデータ未公開、またはファイル名が不正です"
-              continue
-            fi
+      if [ ! -d "$testdir" ]; then
+        echo "! $filename: テストデータ未公開、またはファイル名が不正です"
+        continue
+      fi
 
-            gcc -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
-            if [ $? -ne 0 ]; then
-              echo "$filename=CE" >> result.txt
-              continue
-            fi
+      g++ -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
+      if [ $? -ne 0 ]; then
+        echo "$filename=CE" >> result.txt
+        continue
+      fi
 
-            pass=0; total=0
-            for infile in "$testdir"/*.in; do
-              total=$((total+1))
-              expected=$(cat "${infile%.in}.out")
-              actual=$(timeout 5 /tmp/prog < "$infile")
-              [ "$actual" == "$expected" ] && pass=$((pass+1))
-            done
-            [ "$pass" -eq "$total" ] && echo "$filename=AC" >> result.txt || echo "$filename=WA" >> result.txt
-          done
+      pass=0; total=0
+      for infile in "$testdir"/*.in; do
+        total=$((total+1))
+        expected=$(cat "${infile%.in}.out")
+        actual=$(timeout 5 /tmp/prog < "$infile")
+        [ "$actual" == "$expected" ] && pass=$((pass+1))
+      done
+      [ "$pass" -eq "$total" ] && echo "$filename=AC" >> result.txt || echo "$filename=WA" >> result.txt
+    done
