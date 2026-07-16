@@ -59,8 +59,10 @@ jobs:
             for infile in "$testdir"/*.in; do
               total=$((total+1))
               expected=$(cat "${infile%.in}.out")
-              actual=$(timeout 3 /tmp/prog < "$infile")
-              status=$?
+              
+              status=0
+              actual=$(timeout 3 /tmp/prog < "$infile") || status=$?
+              
               if [ "$status" -eq 124 ]; then
                 tle=$((tle+1))
                 continue
