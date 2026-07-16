@@ -37,9 +37,15 @@ jobs:
             fi
 
             if [ "$ext" == "c" ]; then
-              gcc -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
+              if ! gcc -Wall -o /tmp/prog "$f" 2>/tmp/compile_err; then
+                echo "${filename}=CE" >> result.txt
+                continue
+              fi
             else
-              g++ -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
+              if ! g++ -Wall -o /tmp/prog "$f" 2>/tmp/compile_err; then
+                echo "${filename}=CE" >> result.txt
+                continue
+              fi
             fi
 
             if [ $? -ne 0 ]; then
