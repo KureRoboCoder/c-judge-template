@@ -6,7 +6,7 @@ int main(void) {
 
     int n;
     cin >> n;
-
+    //
     
 
     return 0;
