@@ -53,6 +53,7 @@ jobs:
               continue
             fi
 
+            re=0
             pass=0
             total=0
             tle=0
@@ -66,6 +67,9 @@ jobs:
               if [ "$status" -eq 124 ]; then
                 tle=$((tle+1))
                 continue
+              elif [ "$status" -ne 0 ]; then
+                re=$((re+1))
+                continue
               fi
               if [ "$actual" == "$expected" ]; then
                 pass=$((pass+1))
@@ -76,6 +80,8 @@ jobs:
               echo "${filename}=AC" >> result.txt
             elif [ "$tle" -gt 0 ]; then
               echo "${filename}=TLE" >> result.txt
+            elif [ "$re" -gt 0 ]; then
+              echo "${filename}=RE" >> result.txt
             else
               echo "${filename}=WA" >> result.txt
             fi
