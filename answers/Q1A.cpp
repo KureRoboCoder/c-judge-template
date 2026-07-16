@@ -6,8 +6,8 @@ int main(void) {
 
     int n;
     cin >> n;
-    //
-    
+
+    cout << n;
 
     return 0;
 }
