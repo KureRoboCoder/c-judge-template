@@ -1,8 +1,8 @@
 - name: 提出ファイルを検出してテスト
         run: |
           for f in answers/Q*.cpp; do
-            [ -e "$f" ] || continue   # ファイルが1つもない場合のガード
-            filename=$(basename "$f" .cpp)          # 例: Q3B
+            [ -e "$f" ] || continue
+            filename=$(basename "$f" .cpp)
             qnum=$(echo "$filename" | grep -oP '(?<=Q)[0-9]+')
             letter=$(echo "$filename" | grep -oP '[A-Z]$')
             testdir="_testdata/Q${qnum}/${letter}"
