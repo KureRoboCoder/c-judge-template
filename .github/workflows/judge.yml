@@ -1,53 +1,29 @@
-name: Judge
-
-on:
-  push:
-    branches: [ main ]
-
-jobs:
-  build-and-test:
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: 正解データを取得(非公開リポジトリから・ログに残さない)
-        uses: actions/checkout@v4
-        with:
-          repository: 【Organization名】/c-testdata
-          token: ${{ secrets.TESTDATA_TOKEN }}
-          path: _testdata
-
-      - name: コンパイル
-        run: gcc -Wall -o submission submission.c
-
-      - name: テスト実行(PASS/FAILのみ表示、中身は非表示)
+- name: 提出ファイルを検出してテスト
         run: |
-          pass=0; total=0
-          for dir in _testdata/*/; do
-            problem=$(basename "$dir")
-            for infile in "$dir"*.in; do
+          for f in answers/Q*.c; do
+            [ -e "$f" ] || continue   # ファイルが1つもない場合のガード
+            filename=$(basename "$f" .c)          # 例: Q3B
+            qnum=$(echo "$filename" | grep -oP '(?<=Q)[0-9]+')
+            letter=$(echo "$filename" | grep -oP '[A-Z]$')
+            testdir="_testdata/Q${qnum}/${letter}"
+
+            if [ ! -d "$testdir" ]; then
+              echo "⚠️ $filename: テストデータ未公開、またはファイル名が不正です"
+              continue
+            fi
+
+            gcc -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
+            if [ $? -ne 0 ]; then
+              echo "$filename=CE" >> result.txt
+              continue
+            fi
+
+            pass=0; total=0
+            for infile in "$testdir"/*.in; do
               total=$((total+1))
-              outfile="${infile%.in}.out"
-              actual=$(timeout 5 ./submission < "$infile")
-              expected=$(cat "$outfile")
-              if [ "$actual" == "$expected" ]; then
-                pass=$((pass+1))
-                echo "OK $problem/$(basename $infile)"
-              else
-                echo "DM $problem/$(basename $infile)"
-              fi
+              expected=$(cat "${infile%.in}.out")
+              actual=$(timeout 5 /tmp/prog < "$infile")
+              [ "$actual" == "$expected" ] && pass=$((pass+1))
             done
+            [ "$pass" -eq "$total" ] && echo "$filename=AC" >> result.txt || echo "$filename=WA" >> result.txt
           done
-          echo "PASS_COUNT=$pass" >> "$GITHUB_ENV"
-          echo "TOTAL_COUNT=$total" >> "$GITHUB_ENV"
-
-      - name: 集約リポジトリへ結果送信
-        env:
-          TOKEN: ${{ secrets.LEADERBOARD_TOKEN }}
-        run: |
-          curl -X POST \
-            -H "Authorization: token $TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/KureRoboCoder/c-leaderboard/dispatches \
-            -d "{\"event_type\":\"submit\",\"client_payload\":{\"user\":\"${{ github.actor }}\",\"pass\":$PASS_COUNT,\"total\":$TOTAL_COUNT}}"
