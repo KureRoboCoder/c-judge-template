@@ -7,7 +7,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 3
     steps:
       - name: 提出コードをチェックアウト
         uses: actions/checkout@v4
@@ -22,9 +22,11 @@ jobs:
       - name: 提出ファイルを検出してテスト
         run: |
           : > result.txt
-          for f in answers/Q*.cpp; do
+          for f in answers/Q*.c answers/Q*.cpp; do
             [ -e "$f" ] || continue
-            filename=$(basename "$f" .cpp)
+
+            ext="${f##*.}"
+            filename=$(basename "$f" ".$ext")
             qnum=$(echo "$filename" | grep -oP '(?<=Q)[0-9]+')
             letter=$(echo "$filename" | grep -oP '[A-Z]$')
             testdir="_testdata/Q${qnum}/${letter}"
@@ -34,7 +36,12 @@ jobs:
               continue
             fi
 
-            g++ -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
+            if [ "$ext" == "c" ]; then
+              gcc -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
+            else
+              g++ -Wall -o /tmp/prog "$f" 2>/tmp/compile_err
+            fi
+
             if [ $? -ne 0 ]; then
               echo "${filename}=CE" >> result.txt
               continue
@@ -42,10 +49,16 @@ jobs:
 
             pass=0
             total=0
+            tle=0
             for infile in "$testdir"/*.in; do
               total=$((total+1))
               expected=$(cat "${infile%.in}.out")
-              actual=$(timeout 5 /tmp/prog < "$infile")
+              actual=$(timeout 3 /tmp/prog < "$infile")
+              status=$?
+              if [ "$status" -eq 124 ]; then
+                tle=$((tle+1))
+                continue
+              fi
               if [ "$actual" == "$expected" ]; then
                 pass=$((pass+1))
               fi
@@ -53,6 +66,8 @@ jobs:
 
             if [ "$pass" -eq "$total" ]; then
               echo "${filename}=AC" >> result.txt
+            elif [ "$tle" -gt 0 ]; then
+              echo "${filename}=TLE" >> result.txt
             else
               echo "${filename}=WA" >> result.txt
             fi
