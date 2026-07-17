@@ -59,10 +59,10 @@ jobs:
             tle=0
             for infile in "$testdir"/*.in; do
               total=$((total+1))
-              expected=$(cat "${infile%.in}.out")
+              expected_file="${infile%.in}.out"
               
               status=0
-              actual=$(timeout 3 /tmp/prog < "$infile") || status=$?
+              timeout 3 /tmp/prog < "$infile" > /tmp/actual.out || status=$?
               
               if [ "$status" -eq 124 ]; then
                 tle=$((tle+1))
@@ -71,7 +71,8 @@ jobs:
                 re=$((re+1))
                 continue
               fi
-              if [ "$actual" == "$expected" ]; then
+              
+              if diff -w "$expected_file" /tmp/actual.out > /dev/null; then
                 pass=$((pass+1))
               fi
             done
