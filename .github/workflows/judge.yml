@@ -1,115 +1,20 @@
-name: Judge
+name: Submit Code
 
 on:
   push:
-    branches: [ main ]
+    paths:
+      - 'answers/*.cpp' # answersフォルダの.cppが更新された時だけ起動
+    branches:
+      - main
 
 jobs:
-  build-and-test:
+  trigger-judge:
     runs-on: ubuntu-latest
-    timeout-minutes: 3
     steps:
-      - name: 提出コードをチェックアウト
-        uses: actions/checkout@v4
-
-      - name: 正解データを取得(非公開リポジトリ)
-        uses: actions/checkout@v4
+      - name: リーダーボードに合図(Webhook)を送信
+        uses: peter-evans/repository-dispatch@v3
         with:
-          repository: KureRoboCoder/c-testdata
-          token: ${{ secrets.TESTDATA_TOKEN }}
-          path: _testdata
-
-      - name: 提出ファイルを検出してテスト
-        run: |
-          : > result.txt
-          for f in answers/Q*.c answers/Q*.cpp; do
-            [ -e "$f" ] || continue
-
-            ext="${f##*.}"
-            filename=$(basename "$f" ".$ext")
-            qnum=$(echo "$filename" | grep -oP '(?<=Q)[0-9]+')
-            letter=$(echo "$filename" | grep -oP '[A-Z]$')
-            testdir="_testdata/Q${qnum}/${letter}"
-
-            if [ ! -d "$testdir" ]; then
-              echo "::warning::${filename} はファイル名の形式が不正、またはテストデータが未公開です"
-              continue
-            fi
-
-            if [ "$ext" == "c" ]; then
-              if ! gcc -Wall -o /tmp/prog "$f" 2>/tmp/compile_err; then
-                echo "${filename}=CE" >> result.txt
-                continue
-              fi
-            else
-              if ! g++ -Wall -o /tmp/prog "$f" 2>/tmp/compile_err; then
-                echo "${filename}=CE" >> result.txt
-                continue
-              fi
-            fi
-
-            if [ $? -ne 0 ]; then
-              echo "${filename}=CE" >> result.txt
-              continue
-            fi
-
-            re=0
-            pass=0
-            total=0
-            tle=0
-            for infile in "$testdir"/*.in; do
-              total=$((total+1))
-              expected_file="${infile%.in}.out"
-              
-              status=0
-              timeout 3 /tmp/prog < "$infile" > /tmp/actual.out || status=$?
-              
-              if [ "$status" -eq 124 ]; then
-                tle=$((tle+1))
-                continue
-              elif [ "$status" -ne 0 ]; then
-                re=$((re+1))
-                continue
-              fi
-              
-              if diff -w "$expected_file" /tmp/actual.out > /dev/null; then
-                pass=$((pass+1))
-              fi
-            done
-
-            if [ "$pass" -eq "$total" ]; then
-              echo "${filename}=AC" >> result.txt
-            elif [ "$tle" -gt 0 ]; then
-              echo "${filename}=TLE" >> result.txt
-            elif [ "$re" -gt 0 ]; then
-              echo "${filename}=RE" >> result.txt
-            else
-              echo "${filename}=WA" >> result.txt
-            fi
-          done
-          cat result.txt
-
-      - name: 結果をJSONに変換
-        run: |
-          json="{}"
-          if [ -s result.txt ]; then
-            while IFS='=' read -r key value; do
-              json=$(echo "$json" | jq --arg k "$key" --arg v "$value" '. + {($k): $v}')
-            done < result.txt
-          fi
-          echo "$json" > payload.json
-          cat payload.json
-
-      - name: 集約リポジトリへ送信
-        env:
-          TOKEN: ${{ secrets.LEADERBOARD_TOKEN }}
-        run: |
-          payload=$(jq -n \
-            --arg user "${{ github.actor }}" \
-            --slurpfile results payload.json \
-            '{event_type: "submit", client_payload: {user: $user, results: $results[0]}}')
-          curl -X POST \
-            -H "Authorization: token $TOKEN" \
-            -H "Accept: application/vnd.github+json" \
-            https://api.github.com/repos/KureRoboCoder/c-leaderboard/dispatches \
-            -d "$payload"
+          token: ${{ secrets.DISPATCH_TOKEN }}
+          repository: KureRoboCoder/c-leaderboard  # ★宛先を書き換えてください
+          event-type: submit
+          client-payload: '{"user": "${{ github.actor }}", "repo": "${{ github.repository }}", "sha": "${{ github.sha }}"}'
