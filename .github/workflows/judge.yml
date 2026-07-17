@@ -3,7 +3,7 @@ name: Submit Code
 on:
   push:
     paths:
-      - 'answers/*.cpp' # answersフォルダの.cppが更新された時だけ起動
+      - 'answers/*.cpp'
     branches:
       - main
 
@@ -11,10 +11,12 @@ jobs:
   trigger-judge:
     runs-on: ubuntu-latest
     steps:
-      - name: リーダーボードに合図(Webhook)を送信
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.DISPATCH_TOKEN }}
-          repository: KureRoboCoder/c-leaderboard
-          event-type: submit
-          client-payload: '{"user": "${{ github.actor }}", "repo": "${{ github.repository }}", "sha": "${{ github.sha }}"}'
+      - name: リーダーボードに合図(Workflow Dispatch)を送信
+        env:
+          GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
+        run: |
+          gh workflow run remote-judge.yml \
+            --repo あなたのユーザー名/c-leaderboard \
+            -f user="${{ github.actor }}" \
+            -f repo="${{ github.repository }}" \
+            -f sha="${{ github.sha }}"
