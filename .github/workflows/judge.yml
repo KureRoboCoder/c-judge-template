@@ -15,6 +15,6 @@ jobs:
         uses: peter-evans/repository-dispatch@v3
         with:
           token: ${{ secrets.DISPATCH_TOKEN }}
-          repository: KureRoboCoder/c-leaderboard  # ★宛先を書き換えてください
+          repository: KureRoboCoder/c-leaderboard
           event-type: submit
           client-payload: '{"user": "${{ github.actor }}", "repo": "${{ github.repository }}", "sha": "${{ github.sha }}"}'
