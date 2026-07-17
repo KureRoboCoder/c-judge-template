@@ -7,7 +7,7 @@ int main(void) {
     int n;
     cin >> n;
     
-    cout << n + 1;
+    cout << n;
 
     return 0;
 }
