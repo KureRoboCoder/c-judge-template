@@ -16,7 +16,7 @@ jobs:
           GH_TOKEN: ${{ secrets.DISPATCH_TOKEN }}
         run: |
           gh workflow run remote-judge.yml \
-            --repo あなたのユーザー名/c-leaderboard \
+            --repo KureRoboCoder/c-leaderboard \
             -f user="${{ github.actor }}" \
             -f repo="${{ github.repository }}" \
             -f sha="${{ github.sha }}"
